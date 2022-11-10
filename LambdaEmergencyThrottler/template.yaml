@@ -1,0 +1,142 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  anomalyLambdaKiller
+
+  Sample SAM Template for anomalyLambdaKiller
+
+# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
+Globals:
+  Function:
+    Timeout: 30
+Parameters:
+  SourceSNSDisplayNameParameter:
+    Type: String
+    Default: AnomalyDetectorAlarmSNSTopic
+    Description: Enter the display name for the SNS Topic to Trigger the lambdaKiller Lambda
+  CloudWatchAlarmName:
+    Type: String
+    Default: ConcurrencyAlarm
+    Description: Enter the display name for the CloudWatchAlarm to Trigger the lambdaKiller Lambda
+  TargetSNSDisplayNameParameter:
+    Type: String
+    Default: LambdaKillerNotificationTopic
+    Description: Enter the display name for the SNS Topic to Notify when lambdaKiller executes
+  NotificationEmail:
+    Type: String
+    Description: Enter the email to be notified when function triggers
+  DailyInvocationLimit:
+    Type: Number
+    Default: 10000
+    Description: The maximum number of Lambda invocations in this region and account per day.
+
+Resources:
+  CloudwatchAlarmSNSTopic:
+    Type: AWS::SNS::Topic
+    Properties: 
+      DisplayName: 
+        Ref: SourceSNSDisplayNameParameter
+  NotificationSNSTopic:
+    Type: AWS::SNS::Topic
+    Properties: 
+      DisplayName: 
+        Ref: TargetSNSDisplayNameParameter
+  SNSSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Endpoint:
+        Ref: NotificationEmail
+      Protocol: email
+      TopicArn: !Ref NotificationSNSTopic
+
+  CloudWatchAlarmConcurrencySpike:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmActions:
+        - !Ref CloudwatchAlarmSNSTopic
+      AlarmName: 
+        Ref: CloudWatchAlarmName
+      ComparisonOperator: GreaterThanThreshold
+      DatapointsToAlarm: 1
+      EvaluationPeriods: 1
+      Period: 86400
+      Statistic: Sum
+      MetricName: Invocations
+      Namespace: AWS/Lambda
+      Threshold: !Ref DailyInvocationLimit
+      TreatMissingData: notBreaching
+      Unit: Count
+  NotificationSNSTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties: 
+      PolicyDocument:
+        Statement:
+          - Sid: AllowLambda
+            Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com                
+            Action: 'sns:Publish'
+            Condition:
+              Bool:
+                aws:SecureTransport: True
+            Resource:
+              - !Ref NotificationSNSTopic
+
+      Topics:
+        - !Ref NotificationSNSTopic
+  CloudWatchSNSTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties: 
+      PolicyDocument:
+        Statement:
+          - Sid: AllowLambda
+            Effect: Allow
+            Principal:
+              Service:
+                - cloudwatch.amazonaws.com                
+            Action: 'sns:Publish'
+            Condition:
+              Bool:
+                aws:SecureTransport: True
+            Resource:
+              - !Ref CloudwatchAlarmSNSTopic
+
+      Topics:
+        - !Ref CloudwatchAlarmSNSTopic
+  
+
+
+  LambdaKillerFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      CodeUri: LambdaEmergencyThrottler/
+      Handler: app.lambda_handler
+      Runtime: python3.7
+      Environment:
+        Variables:
+          targetSNSArn: !Ref NotificationSNSTopic
+      Policies:
+        Statement:
+        - Sid: LambdaAccess
+          Effect: Allow
+          Action: 
+            - "lambda:ListFunctions"
+            - "lambda:DeleteFunctionConcurrency"
+            - "lambda:PutFunctionConcurrency"
+          Resource: "*"
+        - Sid: SNSAccess
+        
+          Effect: Allow
+          Action:
+          - "sns:Publish"
+          Resource: !Ref NotificationSNSTopic
+      Events:
+       SNSEvent:
+        Type: SNS
+        Properties:
+          Topic:
+            Ref: CloudwatchAlarmSNSTopic
+          
+
+
