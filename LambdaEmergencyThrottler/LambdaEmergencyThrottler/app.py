@@ -1,3 +1,18 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy of
+# this software and associated documentation files (the "Software"), to deal in
+# the Software without restriction, including without limitation the rights to
+# use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+# the Software, and to permit persons to whom the Software is furnished to do so.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+# FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+# COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+# IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+# CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
 import json
 import boto3
 import os
@@ -26,14 +41,14 @@ def lambda_handler(event, context):
 
         Return doc: https://docs.aws.amazon.com/apigateway/latest/developerguide/set-up-lambda-proxy-integrations.html
     """
-    print("event: {}".format(event)) 
+    print("event: {}".format(event))
     print("context: {}".format(context))
     totalNumberOfFunctions = 0
     try:
         totalNumberOfFunctions = killAllConcurrency(context)
         response = snsClient.publish(TopicArn=os.environ["targetSNSArn"], Message = "LambdaKiller has successfully executed. The concurrency of all other Lambda functions is now 0")
         statusCode = 200
-        
+
     except:
         print("An error has occured")
         statusCode = 500
@@ -65,7 +80,7 @@ def getAllFunctionNames():
             hasMarker = False
         else:
             hasMarker = tempResults['NextMarker']
-    
+
     return results
 
 def killAllConcurrency(context):
