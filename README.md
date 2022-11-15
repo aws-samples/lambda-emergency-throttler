@@ -1,19 +1,20 @@
 # Welcome to the Lambda Emergency Throttler project!
 
-This is a user configurable example of a solution to prevent Lambda cost overruns. It allows you to configure a maximum number of invocations per day, and when that limit is breached, the Lambda Emergency Throttler will trigger, blocking all Lambda invocations until you manually reenable them.
+This is a user-configurable example of a solution to prevent Lambda cost overruns. It allows you to configure a maximum number of invocations per day, and when that limit is reached, the Lambda Emergency Throttler will trigger, blocking all Lambda invocations until you manually re-enable them.
 
 This deployment guide assumes you have familiarity with the AWS Serverless Application Model (SAM) Command Line Interface (CLI). If you
 are unfamiliar with the SAM CLI, please refer to this documentation: https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-getting-started.html.
 
 ## Architecture:
 
-The architecture is conceptually very straightforward. A CloudWatch Alarm monitors the account level Lambda "Invocations" metrics. This metric is for the account and region where this solution is deployed. If the daily limit is breached (10000 by default but this is user configurable upon deployment), CloudWatch will send a message to an SNS Topic. The Lambda Emergency Throttler function will execute, which will set the concurrency of all other functions in the region and account to zero, prevent their invocations. It will also send a message to a second SNS topic, which will notify all subscribers that Lambda Emergency Throttler has executed.
+The architecture is conceptually very straightforward. A CloudWatch Alarm monitors the account level Lambda "Invocations" metric. This metric is for the account and region where this solution is deployed. If the daily limit is reached (10000 by default but this is user-configurable upon deployment), CloudWatch will send a message to an SNS topic. The Lambda Emergency Throttler function will execute, which will set the concurrency of all other functions in the region and account to zero, preventing their invocations. It will also send a message to a second SNS topic, which will notify all subscribers that Lambda Emergency Throttler has executed.
 
 ![](./images/lambdaEmergencyThrottlerArchitecture.png)
 
 ## Prerequisites:
 
 1. Install the SAM CLI, which can be done here: https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html
+2. Configure AWS Credentials on your local environment: https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html
 
 
 ## Deployment:
@@ -38,7 +39,7 @@ There is a test function and script you can use for testing. First, deploy Lambd
 cd ../LambdaEmergencyThrottler
 sam deploy --guided
 ```
-Once LambdaChaos has successfully deployed, you can use the createChaos.py file to simulate a large scale invocation of Lambda and see Lambda Emergency Throttler responded. To do this,
+Once LambdaChaos has successfully deployed, you can use the createChaos.py file to simulate a large scale invocation of Lambda and see Lambda Emergency Throttler responded. To do this, execute the creatChaos.py script.
 ```
 cd ..
 python3 createChaos.py
@@ -47,7 +48,7 @@ And follow the prompts in your command line. As a warning, this will invoke the 
 
 ## Reset the Solution:
 
-To reset the solution, you have to reenable the previous reserved concurrency of your Lambda functions. This involves setting every Lambda function in that account and region back to either "Use unreserved concurrency" or to its Reserved Concurrency amount.
+To reset the solution, you have to re-enable the previous reserved concurrency of your Lambda functions. This involves setting every Lambda function in that account and region back to either "Use unreserved concurrency" or to its Reserved Concurrency amount.
 
 
 ## Extensibility:
