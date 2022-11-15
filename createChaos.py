@@ -15,10 +15,14 @@
 
 import boto3
 
-lambdaClient = boto3.client("lambda")
 
+sessionName = str(input("Enter the name of the profile in your AWS Credentials File you would like use. If using the default, enter default\n"))
+
+session = boto3.Session(profile_name=sessionName)
+
+lambdaClient = session.client('lambda')
 def invokeLambda(name):
-    response = lambdaClient.invoke(FunctionName = name, InvocationType = "Event")
+    response = lambdaClient.invoke(FunctionName = name, InvocationType = "RequestResponse")
     return response
 
 def bulkInvokeLambda(name, count):
@@ -50,9 +54,12 @@ def getAllFunctionNames():
 
 
 def main():
+
+
     count = int(input("Enter an Integer for how many function invocations you'd like to trigger. I'd recommend under 20000\n"))
 
     functionNames = getAllFunctionNames()
+
     targetFunction = None
     while targetFunction is None:
         targetFunction = str(input("Enter the name of the function you would like to target. If the name is not found in your account, this will not work.\n"))
