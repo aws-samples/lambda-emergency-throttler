@@ -31,14 +31,57 @@ Parameters:
     Description: The maximum number of Lambda invocations in this region and account per day.
 
 Resources:
+  encryptionKey:
+    Type: 'AWS::KMS::Key'
+    Properties:
+      Description: Key for Encrypting SNS
+      EnableKeyRotation: true
+      PendingWindowInDays: 20
+      KeyPolicy:
+        Version: 2012-10-17
+        Id: key-default-1
+        Statement:
+          - Sid: Enable IAM Root User Permissions
+            Effect: Allow
+            Principal:
+              AWS: !Sub arn:aws:iam::${AWS::AccountId}:root
+            Action: 'kms:*'
+            Resource: '*'
+          - Sid: Enable Cloudwatch Access
+            Effect: Allow
+            Principal:
+              Service: "cloudwatch.amazonaws.com"
+            Action:
+            - "kms:Decrypt"
+            - "kms:GenerateDataKey*"
+            Resource: '*'
+          - Sid: Enable Lambda Access
+            Effect: Allow
+            Principal:
+              Service: "lambda.amazonaws.com"
+            Action:
+            - "kms:Decrypt"
+            - "kms:GenerateDataKey*"
+            Resource: '*'
+          - Sid: Enable SNS Service Access
+            Effect: Allow
+            Principal:
+              Service: "sns.amazonaws.com"
+            Action:
+            - "kms:Decrypt"
+            - "kms:GenerateDataKey*"
+            Resource: '*'
+            
   CloudwatchAlarmSNSTopic:
     Type: AWS::SNS::Topic
     Properties: 
+      KmsMasterKeyId: !Ref encryptionKey
       DisplayName: 
         Ref: SourceSNSDisplayNameParameter
   NotificationSNSTopic:
     Type: AWS::SNS::Topic
     Properties: 
+      KmsMasterKeyId: !Ref encryptionKey
       DisplayName: 
         Ref: TargetSNSDisplayNameParameter
   SNSSubscription:
@@ -129,14 +172,21 @@ Resources:
         
           Effect: Allow
           Action:
-          - "sns:Publish"
+            - "sns:Publish"
           Resource: !Ref NotificationSNSTopic
+        - Sid: KMSAccess
+        
+          Effect: Allow
+          Action:
+            - "kms:GenerateDataKey*"
+            - "kms:Decrypt"
+          Resource: !GetAtt encryptionKey.Arn
       Events:
        SNSEvent:
         Type: SNS
         Properties:
           Topic:
             Ref: CloudwatchAlarmSNSTopic
-          
 
+        
 
